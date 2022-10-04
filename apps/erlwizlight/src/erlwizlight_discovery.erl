@@ -6,9 +6,7 @@
 -export([start_link/1]).
 -export([start_discovery/0]).
 
--define(REGISTER_MESSAGE,
-        "{\"method\":\"registration\",\"params\":{\"phoneMac\":\"AAAAAAAAAAAA\""
-        ",\"register\":false,\"phoneIp\":\"1.2.3.4\",\"id\":\"1\"}}").
+-define(REGISTER_MESSAGE, "{\"method\":\"getPilot\", \"params\":{}}").
 
 init(_Args) ->
     {ok, Socket} = gen_udp:open(38899, [binary, {active, false}]),
@@ -47,9 +45,35 @@ start_discovery() ->
 send_discovery(Socket, IpAddress) ->
     gen_udp:send(Socket, IpAddress, 38899, ?REGISTER_MESSAGE).
 
-add_bulb(#{<<"result">> := #{<<"mac">> := Mac, <<"success">> := true}} = _Response,
+add_bulb(#{<<"result">> :=
+               #{<<"mac">> := Mac,
+                 <<"state">> := State,
+                 <<"sceneId">> := SceneId,
+                 <<"r">> := R,
+                 <<"g">> := G,
+                 <<"b">> := B,
+                 <<"c">> := C,
+                 <<"w">> := W,
+                 <<"dimming">> := Dimming}} =
+             _Response,
          IpAddress) ->
-    io:format("Adding bulb ~p at ~p.~n", [Mac, IpAddress]),
-    erlwizlight_registry:add(binary_to_list(Mac), #{ip => IpAddress});
+    logger:debug("Adding bulb ~p at ~p.~n", [Mac, IpAddress]),
+    erlwizlight_registry:add(binary_to_list(Mac),
+                             #{ip => IpAddress,
+                               state => State,
+                               sceneId => SceneId,
+                               rgbcw => {R, G, B, C, W},
+                               dimming => Dimming});
+add_bulb(#{<<"result">> :=
+               #{<<"mac">> := Mac,
+                 <<"state">> := State,
+                 <<"sceneId">> := SceneId}} =
+             _Response,
+         IpAddress) ->
+    logger:debug("Adding bulb ~p at ~p.~n", [Mac, IpAddress]),
+    erlwizlight_registry:add(binary_to_list(Mac),
+                             #{ip => IpAddress,
+                               state => State,
+                               sceneId => SceneId});
 add_bulb(_, _) ->
     ok.
