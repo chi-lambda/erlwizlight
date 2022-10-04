@@ -26,10 +26,13 @@ start_link() ->
 %%                  type => worker(),       % optional
 %%                  modules => modules()}   % optional
 init([]) ->
-    SupFlags = #{strategy => one_for_all,
+    SupFlags = #{strategy => one_for_one,
                  intensity => 0,
                  period => 1},
-    ChildSpecs = [],
+    ChildSpecs = [
+        #{id => erlwizlight_registry, start => {erlwizlight_registry, start_link, [[]]}},
+        #{id => erlwizlight_discovery, start => {erlwizlight_discovery, start_link, [[]]}}
+    ],
     {ok, {SupFlags, ChildSpecs}}.
 
 %% internal functions
