@@ -7,7 +7,6 @@
 -export([add/2, get/1, get_all/0]).
 
 init(_Args) ->
-    io:format("Starting registry~n", []),
     {ok, #{}}.
 
 handle_cast({add, Name, Bulb}, State) ->
