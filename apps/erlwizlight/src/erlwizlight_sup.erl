@@ -31,7 +31,7 @@ init([]) ->
                  period => 1},
     ChildSpecs = [
         #{id => erlwizlight_registry, start => {erlwizlight_registry, start_link, [[]]}},
-        #{id => erlwizlight_discovery, start => {erlwizlight_discovery, start_link, [[]]}}
+        #{id => erlwizlight_bulbasaur, start => {erlwizlight_bulbasaur, start_link, [[]]}}
     ],
     {ok, {SupFlags, ChildSpecs}}.
 
