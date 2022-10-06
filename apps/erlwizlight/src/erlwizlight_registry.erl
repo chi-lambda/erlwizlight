@@ -13,7 +13,7 @@ handle_cast({add, Name, Bulb}, State) ->
     {noreply, State#{Name => Bulb}}.
 
 handle_call({get, Name}, _From, State) ->
-    {reply, maps:get(Name, State, no_bulb())};
+    {reply, maps:get(Name, State, no_bulb()), State};
 handle_call(get_all, _From, State) ->
     {reply, State, State}.
 
