@@ -4,7 +4,7 @@
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
 -export([start_link/1]).
--export([discover/0]).
+-export([discover/0, on/1, off/1]).
 
 -define(REGISTER_MESSAGE, "{\"method\":\"getPilot\", \"params\":{}}").
 
@@ -24,6 +24,14 @@ handle_cast({discover, {Ip1, Ip2, Ip3, 255} = _IpAddress}, Socket) ->
                   lists:seq(MinAddress, MaxAddress)),
     inet:setopts(Socket, [{active, true}]),
     {noreply, Socket};
+handle_cast({on, Key}, Socket) ->
+    #{ip := Ip} = erlwizlight_registry:get(Key),
+    gen_udp:send(Socket, Ip, 38899, "{\"method\":\"setPilot\",\"params\":{\"state\":true}}"),
+    {noreply, Socket};
+handle_cast({off, Key}, Socket) ->
+    #{ip := Ip} = erlwizlight_registry:get(Key),
+    gen_udp:send(Socket, Ip, 38899, "{\"method\":\"setPilot\",\"params\":{\"state\":false}}"),
+    {noreply, Socket};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -41,6 +49,12 @@ start_link(Opts) ->
 discover() ->
     {ok, BroadcastAddress} = application:get_env(erlwizlight, broadcast_address),
     gen_server:cast(?MODULE, {discover, BroadcastAddress}).
+
+on(Key) ->
+    gen_server:cast(?MODULE, {on, Key}).
+
+off(Key) ->
+    gen_server:cast(?MODULE, {off, Key}).
 
 send_discovery(Socket, IpAddress) ->
     gen_udp:send(Socket, IpAddress, 38899, ?REGISTER_MESSAGE).
