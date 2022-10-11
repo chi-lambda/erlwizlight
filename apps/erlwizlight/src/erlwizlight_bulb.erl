@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, start_link/2]).
--export([on/1, off/1, update/2, get_info/1]).
+-export([on/1, off/1, set_dimming/1, update/2, get_info/1]).
 
 -define(GETPILOT, "{\"method\":\"getPilot\", \"params\":{}}").
 -define(PORT, 38899).
@@ -20,7 +20,25 @@ init(Bulb) ->
 
 handle_cast({update, Bulb}, State) ->
     {noreply, State#{bulb => Bulb}};
-handle_cast(_Msg, State) ->
+handle_cast(on, #{socket := Socket, bulb := #{ip := Ip}} = State) ->
+    ok =
+        gen_udp:send(Socket, Ip, ?PORT, "{\"method\":\"setPilot\",\"params\":{\"state\":true}}"),
+    {noreply, State};
+handle_cast(off, #{socket := Socket, bulb := #{ip := Ip}} = State) ->
+    ok =
+        gen_udp:send(Socket, Ip, ?PORT, "{\"method\":\"setPilot\",\"params\":{\"state\":false}}"),
+    {noreply, State};
+handle_cast({dimming, Dimming}, #{socket := Socket, bulb := #{ip := Ip}} = State)
+    when is_integer(Dimming), Dimming =< 100, Dimming >= 10 ->
+    ok =
+        gen_udp:send(Socket,
+                     Ip,
+                     ?PORT,
+                     io_lib:format("{\"method\":\"setPilot\",\"params\":{\"dimming\":~B}}",
+                                   [max(10, Dimming)])),
+    {noreply, State};
+handle_cast(Msg, State) ->
+    logger:warning("You moron, you didn't handle ~p with state ~p", [Msg, State]),
     {noreply, State}.
 
 handle_call(get_info, _From, #{bulb := Bulb} = State) ->
@@ -43,10 +61,14 @@ start_link(#{mac := Mac} = Bulb, Opts) ->
 %%% interface function
 
 on(Mac) when is_list(Mac) ->
-    gen_server:call({via, erlwizlight_registry, Mac}, on).
+    gen_server:cast({via, erlwizlight_registry, Mac}, on).
 
 off(Mac) when is_list(Mac) ->
-    gen_server:call({via, erlwizlight_registry, Mac}, off).
+    gen_server:cast({via, erlwizlight_registry, Mac}, off).
+
+set_dimming(Dimming) ->
+    gen_server:cast(?MODULE, {dimming, Dimming}).
+
 
 update(Pid, Bulb) when is_pid(Pid) ->
     gen_server:call(Pid, {update, Bulb}).

@@ -4,7 +4,7 @@
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
 -export([start_link/1]).
--export([discover/0, on/1, off/1, set_dimming/2]).
+-export([discover/0]).
 
 -define(REGISTER_MESSAGE, "{\"method\":\"getPilot\", \"params\":{}}").
 -define(PORT, 38899).
@@ -20,26 +20,6 @@ handle_call(_Msg, _From, State) ->
 
 handle_cast({discover, {_Ip1, _Ip2, _Ip3, 255} = IpAddress}, Socket) ->
     discovery(IpAddress, Socket),
-    {noreply, Socket};
-handle_cast({on, Key}, Socket) ->
-    #{ip := Ip} = erlwizlight_registry:get(Key),
-    ok =
-        gen_udp:send(Socket, Ip, ?PORT, "{\"method\":\"setPilot\",\"params\":{\"state\":true}}"),
-    {noreply, Socket};
-handle_cast({off, Key}, Socket) ->
-    #{ip := Ip} = erlwizlight_registry:get(Key),
-    ok =
-        gen_udp:send(Socket, Ip, ?PORT, "{\"method\":\"setPilot\",\"params\":{\"state\":false}}"),
-    {noreply, Socket};
-handle_cast({dimming, Key, Dimming}, Socket)
-    when is_integer(Dimming), Dimming =< 100, Dimming >= 10 ->
-    #{ip := Ip} = erlwizlight_registry:get(Key),
-    ok =
-        gen_udp:send(Socket,
-                     Ip,
-                     ?PORT,
-                     io_lib:format("{\"method\":\"setPilot\",\"params\":{\"dimming\":~B}}",
-                                   [max(10, Dimming)])),
     {noreply, Socket};
 handle_cast(Msg, State) ->
     logger:warning("Unhandled cast: ~p", [Msg]),
@@ -61,15 +41,6 @@ start_link(Opts) ->
 discover() ->
     {ok, BroadcastAddress} = application:get_env(erlwizlight, broadcast_address),
     gen_server:cast(?MODULE, {discover, BroadcastAddress}).
-
-on(Key) ->
-    gen_server:cast(?MODULE, {on, Key}).
-
-off(Key) ->
-    gen_server:cast(?MODULE, {off, Key}).
-
-set_dimming(Key, Dimming) ->
-    gen_server:cast(?MODULE, {dimming, Key, Dimming}).
 
 %%% private functions
 
