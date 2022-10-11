@@ -7,11 +7,12 @@
 -export([discover/0, on/1, off/1, set_dimming/2]).
 
 -define(REGISTER_MESSAGE, "{\"method\":\"getPilot\", \"params\":{}}").
+-define(PORT, 38899).
 
 %%% gen_server callbacks
 
 init(_Args) ->
-    {ok, Socket} = gen_udp:open(38899, [binary, {active, true}]),
+    {ok, Socket} = gen_udp:open(0, [binary, {active, true}]),
     {ok, Socket}.
 
 handle_call(_Msg, _From, State) ->
@@ -23,19 +24,20 @@ handle_cast({discover, {_Ip1, _Ip2, _Ip3, 255} = IpAddress}, Socket) ->
 handle_cast({on, Key}, Socket) ->
     #{ip := Ip} = erlwizlight_registry:get(Key),
     ok =
-        gen_udp:send(Socket, Ip, 38899, "{\"method\":\"setPilot\",\"params\":{\"state\":true}}"),
+        gen_udp:send(Socket, Ip, ?PORT, "{\"method\":\"setPilot\",\"params\":{\"state\":true}}"),
     {noreply, Socket};
 handle_cast({off, Key}, Socket) ->
     #{ip := Ip} = erlwizlight_registry:get(Key),
     ok =
-        gen_udp:send(Socket, Ip, 38899, "{\"method\":\"setPilot\",\"params\":{\"state\":false}}"),
+        gen_udp:send(Socket, Ip, ?PORT, "{\"method\":\"setPilot\",\"params\":{\"state\":false}}"),
     {noreply, Socket};
-handle_cast({dimming, Key, Dimming}, Socket) when is_integer(Dimming), Dimming =< 100, Dimming >= 10 ->
+handle_cast({dimming, Key, Dimming}, Socket)
+    when is_integer(Dimming), Dimming =< 100, Dimming >= 10 ->
     #{ip := Ip} = erlwizlight_registry:get(Key),
     ok =
         gen_udp:send(Socket,
                      Ip,
-                     38899,
+                     ?PORT,
                      io_lib:format("{\"method\":\"setPilot\",\"params\":{\"dimming\":~B}}",
                                    [max(10, Dimming)])),
     {noreply, Socket};
@@ -79,7 +81,7 @@ discovery({Ip1, Ip2, Ip3, 255} = _IpAddress, Socket) ->
                   lists:seq(MinAddress, MaxAddress)).
 
 send_discovery(Socket, IpAddress) ->
-    gen_udp:send(Socket, IpAddress, 38899, ?REGISTER_MESSAGE).
+    gen_udp:send(Socket, IpAddress, ?PORT, ?REGISTER_MESSAGE).
 
 add_bulb(#{<<"result">> :=
                #{<<"mac">> := Mac,
@@ -94,12 +96,13 @@ add_bulb(#{<<"result">> :=
              _Response,
          IpAddress) ->
     logger:debug("Adding bulb ~p at ~p.~n", [Mac, IpAddress]),
-    erlwizlight_registry:add(binary_to_list(Mac),
-                             #{ip => IpAddress,
-                               state => State,
-                               sceneId => SceneId,
-                               rgbcw => {R, G, B, C, W},
-                               dimming => Dimming});
+
+    start_or_update_bulb(#{ip => IpAddress,
+                           mac => binary_to_list(Mac),
+                           state => State,
+                           sceneId => SceneId,
+                           rgbcw => {R, G, B, C, W},
+                           dimming => Dimming});
 add_bulb(#{<<"result">> :=
                #{<<"mac">> := Mac,
                  <<"state">> := State,
@@ -109,12 +112,12 @@ add_bulb(#{<<"result">> :=
              _Response,
          IpAddress) ->
     logger:debug("Adding bulb ~p at ~p.~n", [Mac, IpAddress]),
-    erlwizlight_registry:add(binary_to_list(Mac),
-                             #{ip => IpAddress,
-                               state => State,
-                               sceneId => SceneId,
-                               temp => Temp,
-                               dimming => Dimming});
+    start_or_update_bulb(#{ip => IpAddress,
+                           mac => binary_to_list(Mac),
+                           state => State,
+                           sceneId => SceneId,
+                           temp => Temp,
+                           dimming => Dimming});
 add_bulb(#{<<"result">> :=
                #{<<"mac">> := Mac,
                  <<"state">> := State,
@@ -122,9 +125,17 @@ add_bulb(#{<<"result">> :=
              _Response,
          IpAddress) ->
     logger:debug("Adding bulb ~p at ~p.~n", [Mac, IpAddress]),
-    erlwizlight_registry:add(binary_to_list(Mac),
-                             #{ip => IpAddress,
-                               state => State,
-                               sceneId => SceneId});
+    start_or_update_bulb(#{ip => IpAddress,
+                           mac => binary_to_list(Mac),
+                           state => State,
+                           sceneId => SceneId});
 add_bulb(_, _) ->
     ok.
+
+start_or_update_bulb(#{mac := Mac} = Bulb) ->
+    case erlwizlight_registry:whereis_name(Mac) of
+        undefined ->
+            erlwizlight_bulb_sup:start_child(Bulb);
+        Pid ->
+            gen_server:call(Pid, {update, Bulb})
+    end.

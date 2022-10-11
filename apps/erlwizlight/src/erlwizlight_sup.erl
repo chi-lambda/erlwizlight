@@ -27,11 +27,12 @@ start_link() ->
 %%                  modules => modules()}   % optional
 init([]) ->
     SupFlags = #{strategy => one_for_one,
-                 intensity => 0,
-                 period => 1},
+                 intensity => 5,
+                 period => 60},
     ChildSpecs = [
         #{id => erlwizlight_registry, start => {erlwizlight_registry, start_link, [[]]}},
-        #{id => erlwizlight_bulbasaur, start => {erlwizlight_bulbasaur, start_link, [[]]}}
+        #{id => erlwizlight_bulbasaur, start => {erlwizlight_bulbasaur, start_link, [[]]}},
+        #{id => erlwizlight_bulb_sup, start => {erlwizlight_bulb_sup, start_link, []}, type => supervisor}
     ],
     {ok, {SupFlags, ChildSpecs}}.
 
