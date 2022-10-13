@@ -4,9 +4,17 @@
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, start_link/2]).
 -export([on/1, off/1, set_dimming/1, update/2, get_info/1]).
+-export([json_to_bulb/1]).
 
 -define(GETPILOT, "{\"method\":\"getPilot\", \"params\":{}}").
 -define(PORT, 38899).
+-define(JSON_MAPPING,
+        [{<<"mac">>, mac},
+         {<<"state">>, state},
+         {<<"sceneId">>, scene_id},
+         {<<"dimming">>, dimming},
+         {<<"temp">>, temp},
+         {ip, ip}]).
 
 %%% gen_server functions
 
@@ -52,7 +60,7 @@ handle_info(refresh, #{socket := Socket, bulb := #{ip := IpAddress}} = State) ->
 handle_info({udp, Socket, _IpAddress, _Port, _Msg}, #{socket := Socket} = State) ->
     {noreply, State};
 handle_info(Msg, State) ->
-    logger:warning("You moron, you need to handle ~p", [Msg]),
+    logger:warning("Unhandled message ~p with state ~p", [Msg, State]),
     {noreply, State}.
 
 start_link(#{mac := Mac} = Bulb, Opts) ->
@@ -69,7 +77,6 @@ off(Mac) when is_list(Mac) ->
 set_dimming(Dimming) ->
     gen_server:cast(?MODULE, {dimming, Dimming}).
 
-
 update(Pid, Bulb) when is_pid(Pid) ->
     gen_server:call(Pid, {update, Bulb}).
 
@@ -77,3 +84,29 @@ get_info(Pid) when is_pid(Pid) ->
     gen_server:call(Pid, get_info);
 get_info(Mac) when is_list(Mac) ->
     gen_server:call({via, erlwizlight_registry, Mac}, get_info).
+
+%%% Utility functions
+
+json_to_bulb(Json) ->
+    Mapped =
+        lists:foldl(fun ({JsonKey, BulbKey}, Acc) when is_map_key(JsonKey, Json), BulbKey == mac ->
+                            [{BulbKey, binary_to_list(maps:get(JsonKey, Json))} | Acc];
+                        ({JsonKey, BulbKey}, Acc) when is_map_key(JsonKey, Json) ->
+                            [{BulbKey, maps:get(JsonKey, Json)} | Acc];
+                        (_, Acc) ->
+                            Acc
+                    end,
+                    [],
+                    ?JSON_MAPPING),
+    MappedWithRgbcw = add_rgbcw(Mapped, Json),
+    maps:from_list(MappedWithRgbcw).
+
+add_rgbcw(List,
+          #{<<"r">> := R,
+            <<"g">> := G,
+            <<"b">> := B,
+            <<"c">> := C,
+            <<"w">> := W}) ->
+    [{rgbcw, {R, G, B, C, W}} | List];
+add_rgbcw(List, _) ->
+    List.

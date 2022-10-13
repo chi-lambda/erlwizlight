@@ -54,52 +54,10 @@ discovery({Ip1, Ip2, Ip3, 255} = _IpAddress, Socket) ->
 send_discovery(Socket, IpAddress) ->
     gen_udp:send(Socket, IpAddress, ?PORT, ?REGISTER_MESSAGE).
 
-add_bulb(#{<<"result">> :=
-               #{<<"mac">> := Mac,
-                 <<"state">> := State,
-                 <<"sceneId">> := SceneId,
-                 <<"r">> := R,
-                 <<"g">> := G,
-                 <<"b">> := B,
-                 <<"c">> := C,
-                 <<"w">> := W,
-                 <<"dimming">> := Dimming}} =
-             _Response,
-         IpAddress) ->
-    logger:debug("Adding bulb ~p at ~p.~n", [Mac, IpAddress]),
+add_bulb(#{<<"result">> := Bulb}, IpAddress) ->
+    logger:debug("Adding bulb ~p at ~p.~n", [Bulb, IpAddress]),
 
-    start_or_update_bulb(#{ip => IpAddress,
-                           mac => binary_to_list(Mac),
-                           state => State,
-                           sceneId => SceneId,
-                           rgbcw => {R, G, B, C, W},
-                           dimming => Dimming});
-add_bulb(#{<<"result">> :=
-               #{<<"mac">> := Mac,
-                 <<"state">> := State,
-                 <<"sceneId">> := SceneId,
-                 <<"temp">> := Temp,
-                 <<"dimming">> := Dimming}} =
-             _Response,
-         IpAddress) ->
-    logger:debug("Adding bulb ~p at ~p.~n", [Mac, IpAddress]),
-    start_or_update_bulb(#{ip => IpAddress,
-                           mac => binary_to_list(Mac),
-                           state => State,
-                           sceneId => SceneId,
-                           temp => Temp,
-                           dimming => Dimming});
-add_bulb(#{<<"result">> :=
-               #{<<"mac">> := Mac,
-                 <<"state">> := State,
-                 <<"sceneId">> := SceneId}} =
-             _Response,
-         IpAddress) ->
-    logger:debug("Adding bulb ~p at ~p.~n", [Mac, IpAddress]),
-    start_or_update_bulb(#{ip => IpAddress,
-                           mac => binary_to_list(Mac),
-                           state => State,
-                           sceneId => SceneId});
+    start_or_update_bulb(erlwizlight_bulb:json_to_bulb(Bulb#{ip => IpAddress}));
 add_bulb(_, _) ->
     ok.
 
@@ -108,5 +66,5 @@ start_or_update_bulb(#{mac := Mac} = Bulb) ->
         undefined ->
             erlwizlight_bulb_sup:start_child(Bulb);
         Pid ->
-            gen_server:call(Pid, {update, Bulb})
+            erlwizlight_bulb:update(Pid, Bulb)
     end.
