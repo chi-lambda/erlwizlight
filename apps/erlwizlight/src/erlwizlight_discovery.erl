@@ -1,4 +1,4 @@
--module(erlwizlight_bulbasaur).
+-module(erlwizlight_discovery).
 
 -behaviour(gen_server).
 
