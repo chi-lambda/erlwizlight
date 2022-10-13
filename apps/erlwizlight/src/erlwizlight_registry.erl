@@ -9,22 +9,17 @@
 init(_Args) ->
     {ok, #{}}.
 
-handle_cast({send, Name, Msg}, State) ->
-    case maps:is_key(Name, State) of
-        true ->
-            maps:get(Name, State) ! Msg;
-        false ->
-            ok
-    end,
+handle_cast({send, Name, Msg}, State) when is_map_key(Name, State) ->
+    maps:get(Name, State) ! Msg,
+    {noreply, State};
+handle_cast(Msg, State) ->
+    logger:warning("Unhandled cast ~p with state ~p", [Msg, State]),
     {noreply, State}.
 
+handle_call({register, Name, _Pid}, _From, State) when is_map_key(Name, State) ->
+    {reply, no, State};
 handle_call({register, Name, Pid}, _From, State) ->
-    case maps:is_key(Name, State) of
-        false ->
-            {reply, yes, State#{Name => Pid}};
-        true ->
-            {reply, no, State}
-    end;
+    {reply, yes, State#{Name => Pid}};
 handle_call({unregister, Name}, _From, State) ->
     {reply, ok, maps:remove(Name, State)};
 handle_call({whereis, Name}, _From, State) ->
