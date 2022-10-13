@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, start_link/2]).
--export([on/1, off/1, set_dimming/1, update/2, get_info/1]).
+-export([on/1, off/1, set_dimming/1, update/2, get_info/1, set_name/2]).
 -export([json_to_bulb/1]).
 
 -define(GETPILOT, "{\"method\":\"getPilot\", \"params\":{}}").
@@ -18,12 +18,13 @@
 
 %%% gen_server functions
 
-init(Bulb) ->
+init(#{mac := Mac} = Bulb) ->
     {ok, Socket} = gen_udp:open(0), % open ephemeral port
     {ok, TimerRef} = timer:send_interval(60000, refresh),
+    Name = erlwizlight_storage:get_name(Mac),
     {ok,
      #{socket => Socket,
-       bulb => Bulb,
+       bulb => Bulb#{name => Name},
        timer_ref => TimerRef}}.
 
 handle_cast({update, Bulb}, State) ->
@@ -45,6 +46,9 @@ handle_cast({dimming, Dimming}, #{socket := Socket, bulb := #{ip := Ip}} = State
                      io_lib:format("{\"method\":\"setPilot\",\"params\":{\"dimming\":~B}}",
                                    [max(10, Dimming)])),
     {noreply, State};
+handle_cast({set_name, Name}, #{bulb := #{mac := Mac}} = State) ->
+    erlwizlight_storage:set_name(Mac, Name),
+    {noreply, State#{name => Name}};
 handle_cast(Msg, State) ->
     logger:warning("You moron, you didn't handle ~p with state ~p", [Msg, State]),
     {noreply, State}.
@@ -84,6 +88,9 @@ get_info(Pid) when is_pid(Pid) ->
     gen_server:call(Pid, get_info);
 get_info(Mac) when is_list(Mac) ->
     gen_server:call({via, erlwizlight_registry, Mac}, get_info).
+
+set_name(Mac, Name) ->
+    gen_server:cast({via, erlwizlight_registry, Mac}, {set_name, Name}).
 
 %%% Utility functions
 

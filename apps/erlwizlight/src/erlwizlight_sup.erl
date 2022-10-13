@@ -31,6 +31,7 @@ init([]) ->
                  period => 60},
     ChildSpecs = [
         #{id => erlwizlight_registry, start => {erlwizlight_registry, start_link, [[]]}},
+        #{id => erlwizlight_storage, start => {erlwizlight_storage, start_link, [[]]}},
         #{id => erlwizlight_discovery, start => {erlwizlight_discovery, start_link, [[]]}},
         #{id => erlwizlight_bulb_sup, start => {erlwizlight_bulb_sup, start_link, []}, type => supervisor}
     ],
