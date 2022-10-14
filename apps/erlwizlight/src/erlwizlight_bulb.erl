@@ -46,9 +46,9 @@ handle_cast({dimming, Dimming}, #{socket := Socket, bulb := #{ip := Ip}} = State
                      io_lib:format("{\"method\":\"setPilot\",\"params\":{\"dimming\":~B}}",
                                    [max(10, Dimming)])),
     {noreply, State};
-handle_cast({set_name, Name}, #{bulb := #{mac := Mac}} = State) ->
+handle_cast({set_name, Name}, #{bulb := #{mac := Mac} = Bulb} = State) ->
     erlwizlight_storage:set_name(Mac, Name),
-    {noreply, State#{name => Name}};
+    {noreply, State#{bulb => Bulb#{name => Name}}};
 handle_cast(Msg, State) ->
     logger:warning("You moron, you didn't handle ~p with state ~p", [Msg, State]),
     {noreply, State}.
