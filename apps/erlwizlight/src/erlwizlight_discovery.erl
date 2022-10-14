@@ -13,6 +13,7 @@
 
 init(_Args) ->
     {ok, Socket} = gen_udp:open(0, [binary, {active, true}]),
+    spawn(fun() -> discover() end),
     {ok, Socket}.
 
 handle_call(_Msg, _From, State) ->
