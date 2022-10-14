@@ -3,7 +3,7 @@
 -behavior(gen_server).
 
 -export([init/1, handle_cast/2, handle_call/3, start_link/1]).
--export([get_name/1, set_name/2]).
+-export([get_name/1, set_name/2, get_mac/1]).
 
 -include_lib("stdlib/include/ms_transform.hrl").
 
@@ -39,8 +39,17 @@ get_name(Mac) ->
         mnesia:transaction(fun() ->
                               mnesia:select(bulb,
                                             ets:fun2ms(fun(#bulb{mac = Mac2, name = Name})
-                                                          when Mac == Mac2 ->
-                                                          Name
+                                                          when Mac == Mac2 -> Name
+                                                       end))
+                           end),
+    maybe(Result).
+
+get_mac(Name) ->
+    {atomic, Result} =
+        mnesia:transaction(fun() ->
+                              mnesia:select(bulb,
+                                            ets:fun2ms(fun(#bulb{mac = Mac, name = Name2})
+                                                          when Name == Name2 -> Mac
                                                        end))
                            end),
     maybe(Result).
@@ -74,5 +83,7 @@ create_table() ->
     end,
     mnesia:wait_for_tables([bulb], infinity).
 
-maybe([H|_]) -> H;
-maybe(_) -> "".
+maybe([H | _]) ->
+    H;
+maybe(_) ->
+    "".

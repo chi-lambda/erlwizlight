@@ -3,7 +3,7 @@
 -behaviour(gen_server).
 
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, start_link/2]).
--export([on/1, off/1, set_dimming/1, update/2, get_info/1, set_name/2]).
+-export([on/1, off/1, set_dimming/2, update/2, get_info/1, set_name/2]).
 -export([json_to_bulb/1]).
 
 -define(GETPILOT, "{\"method\":\"getPilot\", \"params\":{}}").
@@ -78,8 +78,8 @@ on(Mac) when is_list(Mac) ->
 off(Mac) when is_list(Mac) ->
     gen_server:cast({via, erlwizlight_registry, Mac}, off).
 
-set_dimming(Dimming) ->
-    gen_server:cast(?MODULE, {dimming, Dimming}).
+set_dimming(Mac, Dimming) ->
+    gen_server:cast({via, erlwizlight_registry, Mac}, {dimming, Dimming}).
 
 update(Pid, Bulb) when is_pid(Pid) ->
     gen_server:call(Pid, {update, Bulb}).
