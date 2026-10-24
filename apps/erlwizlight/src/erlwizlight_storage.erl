@@ -50,7 +50,7 @@ get_name(Mac) ->
                                                           Name
                                                        end))
                            end),
-    maybe(Result).
+    first_or_empty(Result).
 
 -spec get_mac(string()) -> string().
 get_mac(Name) ->
@@ -62,7 +62,7 @@ get_mac(Name) ->
                                                           Mac
                                                        end))
                            end),
-    maybe(Result).
+    first_or_empty(Result).
 
 -spec set_name(string(), string()) -> ok.
 set_name(Mac, Name) ->
@@ -96,8 +96,8 @@ create_table() ->
     end,
     mnesia:wait_for_tables([bulb], infinity).
 
--spec maybe([string()]) -> string().
-maybe([H | _]) ->
+-spec first_or_empty([string()]) -> string().
+first_or_empty([H | _]) ->
     H;
-maybe(_) ->
+first_or_empty(_) ->
     "".
