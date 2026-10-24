@@ -44,24 +44,30 @@ start_link(Opts) ->
 get_name(Mac) ->
     {atomic, Result} =
         mnesia:transaction(fun() ->
-                              mnesia:select(bulb,
-                                            ets:fun2ms(fun(#bulb{mac = Mac2, name = Name})
-                                                          when Mac == Mac2 ->
-                                                          Name
-                                                       end))
-                           end),
+            mnesia:select(
+                bulb,
+                ets:fun2ms(fun(#bulb{mac = Mac2, name = Name}) when
+                    Mac == Mac2
+                ->
+                    Name
+                end)
+            )
+        end),
     first_or_empty(Result).
 
 -spec get_mac(string()) -> string().
 get_mac(Name) ->
     {atomic, Result} =
         mnesia:transaction(fun() ->
-                              mnesia:select(bulb,
-                                            ets:fun2ms(fun(#bulb{mac = Mac, name = Name2})
-                                                          when Name == Name2 ->
-                                                          Mac
-                                                       end))
-                           end),
+            mnesia:select(
+                bulb,
+                ets:fun2ms(fun(#bulb{mac = Mac, name = Name2}) when
+                    Name == Name2
+                ->
+                    Mac
+                end)
+            )
+        end),
     first_or_empty(Result).
 
 -spec set_name(string(), string()) -> ok.
@@ -84,10 +90,15 @@ create_schema() ->
 
 -spec create_table() -> mnesia:result() | {timeout, [atom()]}.
 create_table() ->
-    case mnesia:create_table(bulb,
-                             [{type, ordered_set},
-                              {disc_copies, [node()]},
-                              {attributes, record_info(fields, bulb)}])
+    case
+        mnesia:create_table(
+            bulb,
+            [
+                {type, ordered_set},
+                {disc_copies, [node()]},
+                {attributes, record_info(fields, bulb)}
+            ]
+        )
     of
         {atomic, ok} ->
             ok;
