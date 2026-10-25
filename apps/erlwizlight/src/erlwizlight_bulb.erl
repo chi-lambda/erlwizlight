@@ -33,7 +33,7 @@
                  socket := gen_udp:socket(),
                  timer_ref := timer:tref()}}.
 init(#{mac := Mac} = Bulb) ->
-    {ok, Socket} = gen_udp:open(0), % open ephemeral port
+    {ok, Socket} = gen_udp:open(0, [binary]), % open ephemeral port
     {ok, TimerRef} = timer:send_interval(60000, refresh),
     Name = erlwizlight_storage:get_name(Mac),
     {ok,
