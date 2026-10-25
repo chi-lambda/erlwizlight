@@ -54,13 +54,13 @@ handle_cast(off, #{socket := Socket, bulb := #{ip := Ip}} = State) ->
         gen_udp:send(Socket, Ip, ?PORT, "{\"method\":\"setPilot\",\"params\":{\"state\":false}}"),
     {noreply, State};
 handle_cast({dimming, Dimming}, #{socket := Socket, bulb := #{ip := Ip}} = State)
-    when is_integer(Dimming), Dimming =< 100, Dimming >= 10 ->
+    when is_integer(Dimming), Dimming =< 100 ->
     ok =
         gen_udp:send(Socket,
                      Ip,
                      ?PORT,
                      io_lib:format("{\"method\":\"setPilot\",\"params\":{\"dimming\":~B}}",
-                                   [max(10, Dimming)])),
+                                   [Dimming])),
     {noreply, State};
 handle_cast({set_name, Name}, #{bulb := #{mac := Mac} = Bulb} = State) ->
     erlwizlight_storage:set_name(Mac, Name),
