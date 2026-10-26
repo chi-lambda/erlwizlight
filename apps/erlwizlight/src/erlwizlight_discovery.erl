@@ -40,7 +40,7 @@ handle_cast(Msg, State) ->
                      {noreply, gen_udp:socket()}.
 handle_info({udp, Socket, IpAddress, _Port, Msg}, Socket) ->
     logger:debug("Received from ~p: ~p~n", [IpAddress, Msg]),
-    add_bulb(jsone:decode(Msg, [{object_format, map}]), IpAddress),
+    add_bulb(json:decode(Msg), IpAddress),
     {noreply, Socket};
 handle_info(Msg, State) ->
     logger:warning("You moron, you need to handle ~p~n", [Msg]),

@@ -86,7 +86,7 @@ handle_cast(get_model_config, #{socket := Socket, bulb := #{ip := IpAddress}} = 
     {noreply, State};
 handle_cast({debug_send, Object},
             #{socket := Socket, bulb := #{ip := IpAddress}} = State) ->
-    Json = jsone:encode(Object),
+    Json = json:encode(Object),
     gen_udp:send(Socket, IpAddress, ?PORT, Json),
     {noreply, State};
 handle_cast(Msg, State) ->
@@ -110,9 +110,9 @@ handle_info(refresh, #{bulb := #{mac := Mac}} = State) ->
     get_configs(Mac),
     {noreply, State};
 handle_info({udp, Socket, _IpAddress, _Port, Msg},
-            #{socket := Socket, bulb := #{name := Name} = Bulb} = State) ->
-    logger:debug("Bulb ~p received ~p", [Name, Msg]),
-    NewBulb = update_bulb(Bulb, jsone:decode(Msg, [{object_format, map}])),
+            #{socket := Socket, bulb := #{name := Name, ip := Ip} = Bulb} = State) ->
+    logger:debug("Bulb ~p (~p) received ~p", [Name, Ip, Msg]),
+    NewBulb = update_bulb(Bulb, json:decode(Msg)),
     {noreply, State#{bulb := NewBulb}};
 handle_info(Msg, State) ->
     logger:warning("Unhandled message ~p with state ~p", [Msg, State]),
